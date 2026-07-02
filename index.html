@@ -98,7 +98,7 @@
             display: grid;
             grid-template-columns: 2fr 2fr 1.5fr 1.5fr;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
+            overflow: visible; /* Adjusted to show suggestions overflow correctly */
             padding: 5px;
         }
 
@@ -137,6 +137,7 @@
             max-height: 200px; overflow-y: auto; z-index: 10;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             display: none; border: 1px solid #e2e8f0;
+            color: var(--text-dark);
         }
         .suggestions div { padding: 12px 20px; font-size: 14px; cursor: pointer; }
         .suggestions div:hover { background-color: #f1f5f9; }
@@ -236,6 +237,7 @@
 </head>
 <body>
 
+    <!-- Main Shared Navigation Header Bar -->
     <nav class="navbar">
         <div class="logo" onclick="switchView('search')">🎟️ Ticket<span>Corner</span></div>
         <div class="nav-links">
@@ -244,6 +246,7 @@
         </div>
     </nav>
 
+    <!-- VIEW 1: SEARCH & BOOKING VIEW HUB -->
     <div id="view-search-root" class="page-view active-view">
         <section class="hero">
             <h1>Find and Book Your Next Journey Comfortably</h1>
@@ -289,6 +292,7 @@
         </main>
     </div>
 
+    <!-- VIEW 2: "MY BOOKINGS" HISTORY PAGE DASHBOARD -->
     <div id="view-bookings-root" class="page-view">
         <div class="history-container">
             <div class="history-header">
@@ -299,10 +303,12 @@
                 <div class="tag prime" style="font-size: 14px; padding: 6px 16px;" id="badge-total-bookings">2 Records Saved</div>
             </div>
             <div id="historyCardsContainer">
-                </div>
+                <!-- Appended booking cards display dynamically here -->
+            </div>
         </div>
     </div>
 
+    <!-- Global Receipt Confirmation Modal -->
     <div id="ticketModal" class="modal-overlay">
         <div class="ticket-modal">
             <div class="modal-header">
@@ -314,13 +320,19 @@
     </div>
 
     <script>
-        // Production Reactive Core State Storage Database
+        // Local City Directory for Autocomplete Lists (Replaces Map API lookup)
+        const cityDatabase = [
+            "Mumbai, Maharashtra", "Pune, Maharashtra", "Bengaluru, Karnataka", 
+            "Hyderabad, Telangana", "Delhi, NCR", "Chennai, Tamil Nadu", 
+            "Goa", "Ahmedabad, Gujarat", "Jaipur, Rajasthan", "Kolkata, West Bengal"
+        ];
+
+        // Core State Storage Database
         let appState = {
             distanceKm: 150, 
             allBuses: [],
             selectedSeats: [],
             activeBusId: null,
-            // Mock dynamic booking data loaded into memory initially
             bookingHistory: [
                 {
                     ticketId: "TC-9482103",
@@ -361,7 +373,15 @@
         setupAutocomplete('fromCity', 'fromSuggestions');
         setupAutocomplete('toCity', 'toSuggestions');
 
-        // Page View Controller Engine switching tabs smoothly
+        // Close suggestions dropdowns when clicking anywhere outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.input-group')) {
+                document.getElementById('fromSuggestions').style.display = 'none';
+                document.getElementById('toSuggestions').style.display = 'none';
+            }
+        });
+
+        // Page View Controller
         function switchView(viewName) {
             document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active-view'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -381,7 +401,7 @@
             document.getElementById('badge-total-bookings').textContent = `${appState.bookingHistory.length} Records Saved`;
         }
 
-        // Programmatic execution engine for "My Bookings History List"
+        // Render "My Bookings" Page Matrix
         function renderBookingHistoryPage() {
             const container = document.getElementById('historyCardsContainer');
             if(!appState.bookingHistory.length) {
@@ -389,7 +409,6 @@
                 return;
             }
 
-            // Sort history to show newest bookings first
             const sortedHistory = [...appState.bookingHistory].reverse();
 
             container.innerHTML = sortedHistory.map(item => `
@@ -420,66 +439,82 @@
             `).join('');
         }
 
+        // Local Instant Dropdown Engine (No API calls)
         function setupAutocomplete(inputId, suggestionId) {
             const input = document.getElementById(inputId);
             const container = document.getElementById(suggestionId);
-            let timer;
 
             input.addEventListener('input', () => {
-                clearTimeout(timer);
-                if(input.value.trim().length < 3) { container.style.display = 'none'; return; }
+                const query = input.value.toLowerCase().trim();
+                container.innerHTML = '';
 
-                timer = setTimeout(async () => {
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}&countrycodes=in`);
-                        const data = await res.json();
-                        container.innerHTML = '';
-                        if(data && data.length > 0) {
-                            container.style.display = 'block';
-                            data.slice(0, 4).forEach(item => {
-                                const div = document.createElement('div');
-                                div.textContent = item.display_name.split(',')[0] + (item.display_name.split(',')[1] ? ', ' + item.display_name.split(',')[1] : '');
-                                div.onclick = () => { input.value = div.textContent; container.style.display = 'none'; };
-                                container.appendChild(div);
-                            });
-                        }
-                    } catch(e) { console.log("Offline Fallback Mode Auto-configured."); }
-                }, 400);
+                if(query.length < 1) { container.style.display = 'none'; return; }
+
+                const matches = cityDatabase.filter(city => city.toLowerCase().includes(query));
+
+                if(matches.length > 0) {
+                    container.style.display = 'block';
+                    matches.forEach(match => {
+                        const div = document.createElement('div');
+                        div.textContent = match;
+                        div.onclick = () => { 
+                            input.value = match; 
+                            container.style.display = 'none'; 
+                        };
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+
+            // Focus to show standard lists
+            input.addEventListener('focus', () => {
+                if (input.value === '') {
+                    container.innerHTML = '';
+                    container.style.display = 'block';
+                    cityDatabase.slice(0, 5).forEach(match => {
+                        const div = document.createElement('div');
+                        div.textContent = match;
+                        div.onclick = () => { input.value = match; container.style.display = 'none'; };
+                        container.appendChild(div);
+                    });
+                }
             });
         }
 
-        async function triggerSearch() {
+        // Search engine that creates dynamic matrices without distance APIs
+        function triggerSearch() {
             const from = document.getElementById('fromCity').value.trim();
             const to = document.getElementById('toCity').value.trim();
             const container = document.getElementById('busListContainer');
 
             if(!from || !to) { alert('Please write both Source & Destination entries.'); return; }
-            container.innerHTML = `<div class="no-buses">Querying live regional schedules...</div>`;
-            appState.distanceKm = Math.floor(Math.random() * (450 - 120 + 1)) + 120;
+            if(from === to) { alert('Source and Destination cities cannot be identical.'); return; }
+            
+            container.innerHTML = `<div class="no-buses">Querying local regional schedules...</div>`;
+            
+            // Generate deterministic but dynamic distance mapping depending on string letters
+            let salt = (from.length + to.length) * 12;
+            appState.distanceKm = Math.floor((salt % 330) + 140); 
 
-            try {
-                const geoA = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(from)}`)).json();
-                const geoB = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(to)}`)).json();
-                if(geoA.length && geoB.length) {
-                    const route = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${geoA[0].lon},${geoA[0].lat};${geoB[0].lon},${geoB[0].lat}?overview=false`)).json();
-                    if(route.routes && route.routes[0]) { appState.distanceKm = route.routes[0].distance / 1000; }
-                }
-            } catch(err) { console.log("Using dynamic computation math fallback parameters."); }
-
-            generateMockBuses();
-            renderBusCards();
+            // Simulate immediate loading state layout
+            setTimeout(() => {
+                generateMockBuses();
+                renderBusCards();
+            }, 250);
         }
 
         function generateMockBuses() {
             const operators = ['National Express Lines', 'IntrCity Premium SmartBus', 'Zingbus Luxury Class', 'VRL Connect Travels', 'SRS Corporate Lines', 'Orange Royal Tours'];
-            const calculatedBaseFare = Math.round(appState.distanceKm * 2);
+            const calculatedBaseFare = Math.round(appState.distanceKm * 2.2);
 
             appState.allBuses = Array.from({ length: 6 }, (_, i) => {
                 const isAc = i % 2 === 0;
                 const isSleeper = i % 3 === 0;
-                const dynamicFare = calculatedBaseFare + (isAc ? 120 : 0) + (isSleeper ? 180 : 0);
-                const depHour = 7 + (i * 2.5);
-                const arrHour = (depHour + Math.round(appState.distanceKm / 60)) % 24;
+                const dynamicFare = calculatedBaseFare + (isAc ? 140 : 0) + (isSleeper ? 220 : 0);
+                const depHour = 6 + (i * 2.8);
+                const arrHour = (depHour + Math.round(appState.distanceKm / 55)) % 24;
 
                 return {
                     id: 'bus-' + i,
@@ -489,8 +524,8 @@
                     depTime: `${Math.floor(depHour).toString().padStart(2,'0')}:15`,
                     arrTime: `${Math.floor(arrHour).toString().padStart(2,'0')}:45`,
                     depPeriod: depHour >= 6 && depHour < 15 ? 'morning' : 'evening',
-                    duration: `${Math.round(appState.distanceKm / 60)}h 30m`,
-                    fare: dynamicFare, available: 8 + (i * 3)
+                    duration: `${Math.floor(appState.distanceKm / 55)}h 30m`,
+                    fare: dynamicFare, available: 6 + (i * 4)
                 };
             });
         }
@@ -525,7 +560,7 @@
                             </div>
                         </div>
                         <div class="time-info"><h2>${bus.depTime}</h2><p>Departure</p></div>
-                        <div class="duration-badge"><span>${bus.duration}</span><br><small style="color:var(--text-muted)">${appState.distanceKm.toFixed(0)} km</small></div>
+                        <div class="duration-badge"><span>${bus.duration}</span><br><small style="color:var(--text-muted)">${appState.distanceKm} km</small></div>
                         <div class="time-info"><h2>${bus.arrTime}</h2><p>Arrival</p></div>
                         <div class="fare-info"><h2>₹${bus.fare}</h2><p style="font-size:12px; color:var(--text-muted);">${bus.available} seats left</p></div>
                         <div style="text-align: right;">
@@ -581,12 +616,12 @@
             let html = '';
             const seatClass = isSleeper ? 'seat sleeper' : 'seat';
             for(let r = 1; r <= 5; r++) {
-                html += `<div class="bus-row"><div class="side-seats">`;
+                html += `<div class="bus-row"><div class="side-seats" style="display:flex; gap:6px;">`;
                 for(let c = 1; c <= 2; c++) {
                     const label = `${r}${String.fromCharCode(64 + c)}`;
                     html += `<div class="${seatClass} ${Math.random() < 0.25 ? 'booked' : ''}" onclick="selectSeat(this,'${label}')">${label}</div>`;
                 }
-                html += `</div><div class="side-seats">`;
+                html += `</div><div class="side-seats" style="display:flex; gap:6px;">`;
                 for(let c = 3; c <= 4; c++) {
                     const label = `${r}${String.fromCharCode(64 + c)}`;
                     html += `<div class="${seatClass} ${Math.random() < 0.25 ? 'booked' : ''}" onclick="selectSeat(this,'${label}')">${label}</div>`;
@@ -630,7 +665,7 @@
             container.style.textAlign = 'left';
             container.innerHTML = appState.selectedSeats.map(seat => `
                 <div class="passenger-inputs-block">
-                    <h5>Passenger Seat Allocation: ${seat}</h5>
+                    <h5 style="margin-bottom:8px;">Passenger Seat Allocation: ${seat}</h5>
                     <div class="passenger-field-row">
                         <input type="text" placeholder="Full Name" class="p-name" id="name-${seat}" required>
                         <input type="number" placeholder="Age" class="p-age" id="age-${seat}" min="5" max="100" required>
@@ -640,7 +675,7 @@
         }
 
         function openTicketPopup(busId) {
-            if(!appState.selectedSeats.length) { alert('Please pick at least one available seat layout node.'); return; }
+            if(!appState.selectedSeats.length) { alert('Please pick at least one available seat.'); return; }
             
             let passengersList = [];
             let passengersDetailsHTML = '';
@@ -650,11 +685,11 @@
                 const ageVal = document.getElementById(`age-${seat}`).value.trim();
                 
                 if(!nameVal || !ageVal) {
-                    alert(`Please enter details for validation on Seat row item: ${seat}.`);
+                    alert(`Please enter details for validation on Seat: ${seat}.`);
                     return;
                 }
                 passengersList.push({ name: nameVal, age: ageVal });
-                passengersDetailsHTML += `<div style="padding: 4px 0;">• Seat Reference ${seat}: <strong>${nameVal}</strong> (${ageVal} Yrs)</div>`;
+                passengersDetailsHTML += `<div style="padding: 4px 0;">• Seat ${seat}: <strong>${nameVal}</strong> (${ageVal} Yrs)</div>`;
             }
 
             const bus = appState.allBuses.find(b => b.id === busId);
@@ -665,11 +700,11 @@
             const finalAmount = basePrice + 35 + Math.round(basePrice * 0.05);
             const customTicketId = "TC-" + Math.floor(1000000 + Math.random() * 9000000);
 
-            // Append record dynamically directly into core persistent history container state array
+            // Add dynamic record to the core history state array
             appState.bookingHistory.push({
                 ticketId: customTicketId,
                 operator: bus.name,
-                route: `${document.getElementById('fromCity').value} ➔ ${document.getElementById('toCity').value}`,
+                route: `${document.getElementById('fromCity').value.split(',')[0]} ➔ ${document.getElementById('toCity').value.split(',')[0]}`,
                 date: document.getElementById('journeyDate').value,
                 type: bus.type,
                 seats: [...appState.selectedSeats],
@@ -678,13 +713,12 @@
                 passengers: passengersList
             });
 
-            // Re-sync badge counters across shared UI
             updateHistoryCounters();
 
             body.innerHTML = `
                 <div class="ticket-dash-row"><span><strong>Booking ID (PNR)</strong></span><span style="color:var(--primary-light); font-weight:700;">${customTicketId}</span></div>
                 <div class="ticket-dash-row"><span><strong>Fleet Transporter</strong></span><span>${bus.name}</span></div>
-                <div class="ticket-dash-row"><span><strong>Route Vector</strong></span><span>${document.getElementById('fromCity').value} ➔ ${document.getElementById('toCity').value}</span></div>
+                <div class="ticket-dash-row"><span><strong>Route Vector</strong></span><span>${document.getElementById('fromCity').value.split(',')[0]} ➔ ${document.getElementById('toCity').value.split(',')[0]}</span></div>
                 <div class="ticket-dash-row"><span><strong>Departure Date</strong></span><span>${document.getElementById('journeyDate').value}</span></div>
                 <div class="ticket-dash-row"><span><strong>Category Comfort</strong></span><span>${bus.type}</span></div>
                 <div class="ticket-dash-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
@@ -702,7 +736,6 @@
         function closeTicketPopup() {
             document.getElementById('ticketModal').style.display = 'none';
             document.querySelectorAll('.seat-selection-view').forEach(el => el.style.display = 'none');
-            // Navigate directly to the newly populated structural page view instantly!
             switchView('bookings');
         }
     </script>
