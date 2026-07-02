@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicketCorner - Premium Online Bus Booking Portal</title>
+    <style>
+        :root {
+            --primary: #1e3a8a; /* Deep trust blue */
+            --primary-light: #2563eb;
+            --accent: #f59e0b; /* Amber accent */
+            --success: #10b981;
+            --bg-light: #f8fafc;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* --- Global Structural Components --- */
+        .navbar {
+            background: #ffffff;
+            height: 75px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+            cursor: pointer;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: var(--primary-light); }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .nav-item:hover, .nav-item.active {
+            color: var(--primary-light);
+            background: #eff6ff;
+        }
+
+        /* --- Page Views Toggle --- */
+        .page-view { display: none; }
+        .page-view.active-view { display: block; }
+
+        /* --- Hero Search Bar Section --- */
+        .hero {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 58, 138, 0.7)), url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80') center/cover;
+            padding: 80px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            margin-bottom: 25px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .search-container {
+            background: white;
+            max-width: 1100px;
+            margin: 0 auto;
+            border-radius: 16px;
+            display: grid;
+            grid-template-columns: 2fr 2fr 1.5fr 1.5fr;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            padding: 5px;
+        }
+
+        .input-group {
+            position: relative;
+            padding: 15px 20px;
+            text-align: left;
+        }
+        .input-group:not(:last-child) { border-right: 1px solid #f1f5f9; }
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .input-group input {
+            width: 100%; border: none; outline: none;
+            font-size: 16px; font-weight: 600; color: var(--text-dark);
+            background: transparent;
+        }
+
+        .search-btn {
+            background: var(--primary-light); color: white;
+            border: none; width: 100%; height: 100%;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            border-radius: 12px; transition: all 0.2s ease;
+        }
+        .search-btn:hover { background: var(--primary); }
+
+        /* --- Autocomplete --- */
+        .suggestions {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border-radius: 8px; margin-top: 5px;
+            max-height: 200px; overflow-y: auto; z-index: 10;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: none; border: 1px solid #e2e8f0;
+        }
+        .suggestions div { padding: 12px 20px; font-size: 14px; cursor: pointer; }
+        .suggestions div:hover { background-color: #f1f5f9; }
+
+        /* --- Main Matrix Layout --- */
+        .main-layout {
+            max-width: 1250px; margin: 40px auto; padding: 0 20px;
+            display: grid; grid-template-columns: 280px 1fr; gap: 40px;
+        }
+
+        .filter-panel {
+            background: white; padding: 24px; border-radius: 16px;
+            box-shadow: var(--card-shadow); height: fit-content;
+        }
+        .filter-section { margin-bottom: 30px; }
+        .filter-section h4 {
+            font-size: 13px; color: var(--text-dark); margin-bottom: 15px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .filter-option { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; color: #475569; }
+        .filter-option input { cursor: pointer; accent-color: var(--primary-light); width: 18px; height: 18px; }
+
+        /* --- Bus Layout Matrix --- */
+        .bus-list { display: flex; flex-direction: column; gap: 25px; }
+        .bus-card { background: white; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid #f1f5f9; overflow: hidden; }
+        .bus-summary { display: grid; grid-template-columns: 2.5fr 1.2fr 1.5fr 1.2fr 1.5fr 1.5fr; padding: 28px; align-items: center; }
+        .bus-info h3 { font-size: 19px; color: var(--text-dark); margin-bottom: 6px; }
+        .bus-type { font-size: 13px; color: var(--text-muted); display: flex; gap: 8px; align-items: center; }
+        
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f1f5f9; }
+        .tag.prime { background: #eff6ff; color: var(--primary-light); }
+        .tag.success { background: #e6fbf4; color: #059669; }
+
+        .time-info h2 { font-size: 20px; color: var(--text-dark); }
+        .time-info p { font-size: 12px; color: var(--text-muted); }
+
+        .duration-badge { text-align: center; color: var(--text-muted); font-size: 13px; position: relative; }
+        .duration-badge::before { content: ''; position: absolute; left: 10%; right: 10%; top: 50%; border-bottom: 2px dashed #cbd5e1; z-index: 1; }
+        .duration-badge span { background: white; position: relative; z-index: 2; padding: 0 8px; }
+
+        .view-seats-btn { background: var(--primary); color: white; border: none; padding: 12px 24px; font-weight: 700; border-radius: 8px; cursor: pointer; }
+        .view-seats-btn:hover { background: var(--primary-light); }
+
+        /* --- Seat Booking Sub-Console --- */
+        .seat-selection-view {
+            background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 35px;
+            display: none; grid-template-columns: 1.2fr 1.5fr 1.3fr; gap: 30px;
+        }
+
+        .deck-container, .passenger-container, .checkout-panel { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .passenger-container { max-height: 400px; overflow-y: auto; }
+        .bus-grid { display: flex; flex-direction: column; gap: 14px; }
+        .bus-row { display: flex; gap: 12px; justify-content: space-between; }
+
+        .seat {
+            width: 34px; height: 34px; border: 2px solid #10b981; background: white; border-radius: 6px;
+            cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: #10b981; transition: all 0.2s;
+        }
+        .seat.sleeper { width: 60px; }
+        .seat.booked { background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+        .seat.selected { background: #10b981; color: white; }
+
+        .passenger-inputs-block { border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; margin-bottom: 15px; }
+        .passenger-inputs-block h5 { font-size: 13px; color: var(--primary-light); margin-bottom: 10px; }
+        .passenger-field-row { display: flex; gap: 10px; }
+        .passenger-field-row input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
+        .passenger-field-row input.p-name { flex: 2; }
+        .passenger-field-row input.p-age { flex: 1; }
+
+        .invoice-table { width: 100%; font-size: 14px; margin-top: 15px; border-collapse: collapse; }
+        .invoice-table td { padding: 8px 0; color: var(--text-muted); }
+        .invoice-table tr.total-row { border-top: 1px solid #e2e8f0; font-weight: 700; font-size: 16px; }
+        .invoice-table tr.total-row td { color: var(--text-dark); padding-top: 15px; }
+
+        .confirm-btn { background: var(--success); color: white; border: none; width: 100%; padding: 16px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+        .confirm-btn:hover { background: #059669; }
+
+        /* --- "My Bookings" Dashboard View Components --- */
+        .history-container { max-width: 950px; margin: 40px auto; padding: 0 20px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .history-card { background: white; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid #e2e8f0; padding: 25px; margin-bottom: 25px; }
+        .history-meta-top { display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px; font-size: 13px; color: var(--text-muted); }
+        .history-grid-info { display: grid; grid-template-columns: 2fr 1fr 1.5fr; gap: 20px; align-items: center; }
+        .manifest-box { background: #f8fafc; padding: 12px 18px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 15px; font-size: 13px; }
+
+        /* --- Global Popups --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .ticket-modal { background: white; width: 100%; max-width: 550px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        .modal-header { background: var(--primary); color: white; padding: 30px; text-align: center; }
+        .modal-body { padding: 35px; max-height: 480px; overflow-y: auto; }
+        .ticket-dash-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding: 14px 0; font-size: 15px; }
+        .close-modal-btn { background: #f1f5f9; color: var(--text-dark); border: none; width: 100%; padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 25px; }
+
+        .no-buses { text-align: center; padding: 60px 20px; color: var(--text-muted); background: white; border-radius: 16px; border: 1px dashed #cbd5e1; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo" onclick="switchView('search')">🎟️ Ticket<span>Corner</span></div>
+        <div class="nav-links">
+            <div class="nav-item active" id="nav-search" onclick="switchView('search')">Book Tickets</div>
+            <div class="nav-item" id="nav-bookings" onclick="switchView('bookings')">My Bookings (<span id="history-count">2</span>)</div>
+        </div>
+    </nav>
+
+    <div id="view-search-root" class="page-view active-view">
+        <section class="hero">
+            <h1>Find and Book Your Next Journey Comfortably</h1>
+            <div class="search-container">
+                <div class="input-group">
+                    <label>From</label>
+                    <input id="fromCity" value="Mumbai" placeholder="Enter Source City" autocomplete="off">
+                    <div id="fromSuggestions" class="suggestions"></div>
+                </div>
+                <div class="input-group">
+                    <label>To</label>
+                    <input id="toCity" value="Pune" placeholder="Enter Destination City" autocomplete="off">
+                    <div id="toSuggestions" class="suggestions"></div>
+                </div>
+                <div class="input-group">
+                    <label>Date of Journey</label>
+                    <input type="date" id="journeyDate">
+                </div>
+                <div style="padding: 10px;">
+                    <button class="search-btn" onclick="triggerSearch()">Search Buses</button>
+                </div>
+            </div>
+        </section>
+
+        <main class="main-layout">
+            <aside class="filter-panel">
+                <div class="filter-section">
+                    <h4>Bus Operators</h4>
+                    <label class="filter-option"><input type="checkbox" class="type-filter" value="AC"> AC Fleet</label>
+                    <label class="filter-option"><input type="checkbox" class="type-filter" value="Non-AC"> Non-AC Fleet</label>
+                    <label class="filter-option"><input type="checkbox" class="type-filter" value="Sleeper"> Premium Sleeper</label>
+                    <label class="filter-option"><input type="checkbox" class="type-filter" value="Seater"> Standard Seater</label>
+                </div>
+                <div class="filter-section">
+                    <h4>Departure Windows</h4>
+                    <label class="filter-option"><input type="checkbox" class="time-filter" value="morning"> Morning (06:00 - 12:00)</label>
+                    <label class="filter-option"><input type="checkbox" class="time-filter" value="evening"> Evening (18:00 - 00:00)</label>
+                </div>
+            </aside>
+            <section id="busListContainer" class="bus-list">
+                <div class="no-buses">Specify your origin and target terminal fields above to search schedules.</div>
+            </section>
+        </main>
+    </div>
+
+    <div id="view-bookings-root" class="page-view">
+        <div class="history-container">
+            <div class="history-header">
+                <div>
+                    <h2 style="font-size: 26px; font-weight: 800;">Your Booking History</h2>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Review your upcoming itineraries and past invoices</p>
+                </div>
+                <div class="tag prime" style="font-size: 14px; padding: 6px 16px;" id="badge-total-bookings">2 Records Saved</div>
+            </div>
+            <div id="historyCardsContainer">
+                </div>
+        </div>
+    </div>
+
+    <div id="ticketModal" class="modal-overlay">
+        <div class="ticket-modal">
+            <div class="modal-header">
+                <h2 style="font-size:24px;">Booking Transaction Confirmed!</h2>
+                <p style="font-size:13px; margin-top:6px; opacity:0.85;">Your ticket invoice summary has been generated</p>
+            </div>
+            <div class="modal-body" id="modalTicketBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // Production Reactive Core State Storage Database
+        let appState = {
+            distanceKm: 150, 
+            allBuses: [],
+            selectedSeats: [],
+            activeBusId: null,
+            // Mock dynamic booking data loaded into memory initially
+            bookingHistory: [
+                {
+                    ticketId: "TC-9482103",
+                    operator: "National Express Lines",
+                    route: "Mumbai ➔ Pune",
+                    date: "2026-07-02",
+                    type: "AC Sleeper",
+                    seats: ["1A", "1B"],
+                    totalPrice: 1145,
+                    status: "Upcoming",
+                    passengers: [
+                        { name: "John Doe", age: "34" },
+                        { name: "Jane Doe", age: "31" }
+                    ]
+                },
+                {
+                    ticketId: "TC-8104712",
+                    operator: "Zingbus Luxury Class",
+                    route: "Goa ➔ Mumbai",
+                    date: "2026-06-15",
+                    type: "AC Seater",
+                    seats: ["4C"],
+                    totalPrice: 870,
+                    status: "Completed",
+                    passengers: [
+                        { name: "Alex Mercer", age: "27" }
+                    ]
+                }
+            ]
+        };
+
+        // UI Setup Configurations
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('journeyDate').value = tomorrow.toISOString().split('T')[0];
+        updateHistoryCounters();
+
+        setupAutocomplete('fromCity', 'fromSuggestions');
+        setupAutocomplete('toCity', 'toSuggestions');
+
+        // Page View Controller Engine switching tabs smoothly
+        function switchView(viewName) {
+            document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active-view'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            if (viewName === 'search') {
+                document.getElementById('view-search-root').classList.add('active-view');
+                document.getElementById('nav-search').classList.add('active');
+            } else if (viewName === 'bookings') {
+                document.getElementById('view-bookings-root').classList.add('active-view');
+                document.getElementById('nav-bookings').classList.add('active');
+                renderBookingHistoryPage();
+            }
+        }
+
+        function updateHistoryCounters() {
+            document.getElementById('history-count').textContent = appState.bookingHistory.length;
+            document.getElementById('badge-total-bookings').textContent = `${appState.bookingHistory.length} Records Saved`;
+        }
+
+        // Programmatic execution engine for "My Bookings History List"
+        function renderBookingHistoryPage() {
+            const container = document.getElementById('historyCardsContainer');
+            if(!appState.bookingHistory.length) {
+                container.innerHTML = `<div class="no-buses">No transactions logged inside your history matrix yet.</div>`;
+                return;
+            }
+
+            // Sort history to show newest bookings first
+            const sortedHistory = [...appState.bookingHistory].reverse();
+
+            container.innerHTML = sortedHistory.map(item => `
+                <div class="history-card">
+                    <div class="history-meta-top">
+                        <span>PNR TICKET ID: <strong>${item.ticketId}</strong></span>
+                        <span class="tag ${item.status === 'Upcoming' ? 'prime' : ''}">${item.status}</span>
+                    </div>
+                    <div class="history-grid-info">
+                        <div>
+                            <h3 style="font-size: 18px; color: var(--text-dark);">${item.operator}</h3>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">${item.type}</p>
+                        </div>
+                        <div class="time-info">
+                            <h2 style="font-size: 16px; font-weight: 700;">${item.route}</h2>
+                            <p>${item.date}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 13px; color: var(--text-muted);">Amount Paid:</span>
+                            <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-light);">₹${item.totalPrice}</h2>
+                        </div>
+                    </div>
+                    <div class="manifest-box">
+                        <div style="font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px;">Passenger manifest & Allocated Seats (${item.seats.join(', ')})</div>
+                        ${item.passengers.map(p => `<div>• ${p.name} <span style="color: var(--text-muted);">(${p.age} Yrs)</span></div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function setupAutocomplete(inputId, suggestionId) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(suggestionId);
+            let timer;
+
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                if(input.value.trim().length < 3) { container.style.display = 'none'; return; }
+
+                timer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}&countrycodes=in`);
+                        const data = await res.json();
+                        container.innerHTML = '';
+                        if(data && data.length > 0) {
+                            container.style.display = 'block';
+                            data.slice(0, 4).forEach(item => {
+                                const div = document.createElement('div');
+                                div.textContent = item.display_name.split(',')[0] + (item.display_name.split(',')[1] ? ', ' + item.display_name.split(',')[1] : '');
+                                div.onclick = () => { input.value = div.textContent; container.style.display = 'none'; };
+                                container.appendChild(div);
+                            });
+                        }
+                    } catch(e) { console.log("Offline Fallback Mode Auto-configured."); }
+                }, 400);
+            });
+        }
+
+        async function triggerSearch() {
+            const from = document.getElementById('fromCity').value.trim();
+            const to = document.getElementById('toCity').value.trim();
+            const container = document.getElementById('busListContainer');
+
+            if(!from || !to) { alert('Please write both Source & Destination entries.'); return; }
+            container.innerHTML = `<div class="no-buses">Querying live regional schedules...</div>`;
+            appState.distanceKm = Math.floor(Math.random() * (450 - 120 + 1)) + 120;
+
+            try {
+                const geoA = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(from)}`)).json();
+                const geoB = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(to)}`)).json();
+                if(geoA.length && geoB.length) {
+                    const route = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${geoA[0].lon},${geoA[0].lat};${geoB[0].lon},${geoB[0].lat}?overview=false`)).json();
+                    if(route.routes && route.routes[0]) { appState.distanceKm = route.routes[0].distance / 1000; }
+                }
+            } catch(err) { console.log("Using dynamic computation math fallback parameters."); }
+
+            generateMockBuses();
+            renderBusCards();
+        }
+
+        function generateMockBuses() {
+            const operators = ['National Express Lines', 'IntrCity Premium SmartBus', 'Zingbus Luxury Class', 'VRL Connect Travels', 'SRS Corporate Lines', 'Orange Royal Tours'];
+            const calculatedBaseFare = Math.round(appState.distanceKm * 2);
+
+            appState.allBuses = Array.from({ length: 6 }, (_, i) => {
+                const isAc = i % 2 === 0;
+                const isSleeper = i % 3 === 0;
+                const dynamicFare = calculatedBaseFare + (isAc ? 120 : 0) + (isSleeper ? 180 : 0);
+                const depHour = 7 + (i * 2.5);
+                const arrHour = (depHour + Math.round(appState.distanceKm / 60)) % 24;
+
+                return {
+                    id: 'bus-' + i,
+                    name: operators[i % operators.length],
+                    type: `${isAc ? 'AC' : 'Non-AC'} ${isSleeper ? 'Sleeper' : 'Seater'}`,
+                    isAc, isSleeper,
+                    depTime: `${Math.floor(depHour).toString().padStart(2,'0')}:15`,
+                    arrTime: `${Math.floor(arrHour).toString().padStart(2,'0')}:45`,
+                    depPeriod: depHour >= 6 && depHour < 15 ? 'morning' : 'evening',
+                    duration: `${Math.round(appState.distanceKm / 60)}h 30m`,
+                    fare: dynamicFare, available: 8 + (i * 3)
+                };
+            });
+        }
+
+        function renderBusCards() {
+            const container = document.getElementById('busListContainer');
+            const activeTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map(el => el.value);
+            const activeTimes = Array.from(document.querySelectorAll('.time-filter:checked')).map(el => el.value);
+
+            const filtered = appState.allBuses.filter(bus => {
+                if(activeTypes.includes('AC') && !bus.isAc) return false;
+                if(activeTypes.includes('Non-AC') && bus.isAc) return false;
+                if(activeTypes.includes('Sleeper') && !bus.isSleeper) return false;
+                if(activeTypes.includes('Seater') && bus.isSleeper) return false;
+                if(activeTimes.length && !activeTimes.includes(bus.depPeriod)) return false;
+                return true;
+            });
+
+            if(!filtered.length) {
+                container.innerHTML = `<div class="no-buses">No luxury liners found matching criteria parameters.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(bus => `
+                <div class="bus-card">
+                    <div class="bus-summary">
+                        <div>
+                            <h3>${bus.name}</h3>
+                            <div class="bus-type">
+                                <span>${bus.type}</span>
+                                <span class="tag ${bus.isAc ? 'prime' : ''}">${bus.isAc ? 'Verified Business Class' : 'Standard'}</span>
+                            </div>
+                        </div>
+                        <div class="time-info"><h2>${bus.depTime}</h2><p>Departure</p></div>
+                        <div class="duration-badge"><span>${bus.duration}</span><br><small style="color:var(--text-muted)">${appState.distanceKm.toFixed(0)} km</small></div>
+                        <div class="time-info"><h2>${bus.arrTime}</h2><p>Arrival</p></div>
+                        <div class="fare-info"><h2>₹${bus.fare}</h2><p style="font-size:12px; color:var(--text-muted);">${bus.available} seats left</p></div>
+                        <div style="text-align: right;">
+                            <button class="view-seats-btn" onclick="toggleSeatMap('${bus.id}', ${bus.fare}, ${bus.isSleeper})">Select Seats</button>
+                        </div>
+                    </div>
+                    <div class="seat-selection-view" id="seatmap-${bus.id}"></div>
+                </div>
+            `).join('');
+        }
+
+        document.querySelectorAll('.type-filter, .time-filter').forEach(el => el.addEventListener('change', renderBusCards));
+
+        function toggleSeatMap(busId, fare, isSleeper) {
+            const mapContainer = document.getElementById(`seatmap-${busId}`);
+            if(appState.activeBusId === busId && mapContainer.style.display === 'grid') {
+                mapContainer.style.display = 'none';
+                return;
+            }
+
+            document.querySelectorAll('.seat-selection-view').forEach(el => el.style.display = 'none');
+            appState.activeBusId = busId;
+            appState.selectedSeats = [];
+
+            mapContainer.style.display = 'grid';
+            mapContainer.innerHTML = `
+                <div class="deck-container">
+                    <div class="deck-title">${isSleeper ? 'Lower Sleeper Deck Map' : 'Seater Cab Configuration'}</div>
+                    <div class="bus-grid">${generateSeatMatrix(isSleeper)}</div>
+                </div>
+                <div class="passenger-container">
+                    <div class="deck-title">Passenger Configuration</div>
+                    <div id="passengerFieldsContainer" style="color: var(--text-muted); font-size: 13px; text-align: center; padding-top: 30px;">
+                        Select specific seats from layout matrix to allocate manifest details.
+                    </div>
+                </div>
+                <div class="checkout-panel">
+                    <div>
+                        <div class="deck-title">Pricing Receipt breakdown</div>
+                        <table class="invoice-table">
+                            <tr><td>Base Price (${fare} x <span id="lbl-count">0</span>):</td><td style="text-align:right;" id="inv-base">₹0</td></tr>
+                            <tr><td>Operator Service Charge:</td><td style="text-align:right;" id="inv-fee">₹0</td></tr>
+                            <tr><td>Integrated IGST (5%):</td><td style="text-align:right;" id="inv-tax">₹0</td></tr>
+                            <tr class="total-row"><td>Grand Total:</td><td style="text-align:right;" id="inv-total">₹0</td></tr>
+                        </table>
+                    </div>
+                    <button class="confirm-btn" onclick="openTicketPopup('${busId}')">Proceed to Checkout</button>
+                </div>
+            `;
+        }
+
+        function generateSeatMatrix(isSleeper) {
+            let html = '';
+            const seatClass = isSleeper ? 'seat sleeper' : 'seat';
+            for(let r = 1; r <= 5; r++) {
+                html += `<div class="bus-row"><div class="side-seats">`;
+                for(let c = 1; c <= 2; c++) {
+                    const label = `${r}${String.fromCharCode(64 + c)}`;
+                    html += `<div class="${seatClass} ${Math.random() < 0.25 ? 'booked' : ''}" onclick="selectSeat(this,'${label}')">${label}</div>`;
+                }
+                html += `</div><div class="side-seats">`;
+                for(let c = 3; c <= 4; c++) {
+                    const label = `${r}${String.fromCharCode(64 + c)}`;
+                    html += `<div class="${seatClass} ${Math.random() < 0.25 ? 'booked' : ''}" onclick="selectSeat(this,'${label}')">${label}</div>`;
+                }
+                html += `</div></div>`;
+            }
+            return html;
+        }
+
+        function selectSeat(element, label) {
+            if(element.classList.contains('booked')) return;
+            element.classList.toggle('selected');
+            
+            if(element.classList.contains('selected')) { appState.selectedSeats.push(label); } 
+            else { appState.selectedSeats = appState.selectedSeats.filter(s => s !== label); }
+
+            const targetBus = appState.allBuses.find(b => b.id === appState.activeBusId);
+            const count = appState.selectedSeats.length;
+            
+            const basePrice = count * targetBus.fare;
+            const serviceFee = count > 0 ? 35 : 0; 
+            const gstTax = Math.round(basePrice * 0.05);
+            const absoluteTotal = basePrice + serviceFee + gstTax;
+
+            document.getElementById('lbl-count').textContent = count;
+            document.getElementById('inv-base').textContent = '₹' + basePrice;
+            document.getElementById('inv-fee').textContent = '₹' + serviceFee;
+            document.getElementById('inv-tax').textContent = '₹' + gstTax;
+            document.getElementById('inv-total').textContent = '₹' + absoluteTotal;
+
+            updatePassengerFields();
+        }
+
+        function updatePassengerFields() {
+            const container = document.getElementById('passengerFieldsContainer');
+            if(!appState.selectedSeats.length) {
+                container.innerHTML = `Select specific seats from layout matrix to allocate manifest details.`;
+                container.style.textAlign = 'center';
+                return;
+            }
+            container.style.textAlign = 'left';
+            container.innerHTML = appState.selectedSeats.map(seat => `
+                <div class="passenger-inputs-block">
+                    <h5>Passenger Seat Allocation: ${seat}</h5>
+                    <div class="passenger-field-row">
+                        <input type="text" placeholder="Full Name" class="p-name" id="name-${seat}" required>
+                        <input type="number" placeholder="Age" class="p-age" id="age-${seat}" min="5" max="100" required>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openTicketPopup(busId) {
+            if(!appState.selectedSeats.length) { alert('Please pick at least one available seat layout node.'); return; }
+            
+            let passengersList = [];
+            let passengersDetailsHTML = '';
+
+            for(let seat of appState.selectedSeats) {
+                const nameVal = document.getElementById(`name-${seat}`).value.trim();
+                const ageVal = document.getElementById(`age-${seat}`).value.trim();
+                
+                if(!nameVal || !ageVal) {
+                    alert(`Please enter details for validation on Seat row item: ${seat}.`);
+                    return;
+                }
+                passengersList.push({ name: nameVal, age: ageVal });
+                passengersDetailsHTML += `<div style="padding: 4px 0;">• Seat Reference ${seat}: <strong>${nameVal}</strong> (${ageVal} Yrs)</div>`;
+            }
+
+            const bus = appState.allBuses.find(b => b.id === busId);
+            const modal = document.getElementById('ticketModal');
+            const body = document.getElementById('modalTicketBody');
+            
+            const basePrice = appState.selectedSeats.length * bus.fare;
+            const finalAmount = basePrice + 35 + Math.round(basePrice * 0.05);
+            const customTicketId = "TC-" + Math.floor(1000000 + Math.random() * 9000000);
+
+            // Append record dynamically directly into core persistent history container state array
+            appState.bookingHistory.push({
+                ticketId: customTicketId,
+                operator: bus.name,
+                route: `${document.getElementById('fromCity').value} ➔ ${document.getElementById('toCity').value}`,
+                date: document.getElementById('journeyDate').value,
+                type: bus.type,
+                seats: [...appState.selectedSeats],
+                totalPrice: finalAmount,
+                status: "Upcoming",
+                passengers: passengersList
+            });
+
+            // Re-sync badge counters across shared UI
+            updateHistoryCounters();
+
+            body.innerHTML = `
+                <div class="ticket-dash-row"><span><strong>Booking ID (PNR)</strong></span><span style="color:var(--primary-light); font-weight:700;">${customTicketId}</span></div>
+                <div class="ticket-dash-row"><span><strong>Fleet Transporter</strong></span><span>${bus.name}</span></div>
+                <div class="ticket-dash-row"><span><strong>Route Vector</strong></span><span>${document.getElementById('fromCity').value} ➔ ${document.getElementById('toCity').value}</span></div>
+                <div class="ticket-dash-row"><span><strong>Departure Date</strong></span><span>${document.getElementById('journeyDate').value}</span></div>
+                <div class="ticket-dash-row"><span><strong>Category Comfort</strong></span><span>${bus.type}</span></div>
+                <div class="ticket-dash-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                    <span><strong>Validated Passenger Manifest</strong></span>
+                    <div class="modal-passenger-list">${passengersDetailsHTML}</div>
+                </div>
+                <div class="ticket-dash-row" style="font-size:20px; font-weight:700; color:var(--text-dark); border-bottom:none;">
+                    <span>Gross Paid Total</span><span style="color:var(--success)">₹${finalAmount}</span>
+                </div>
+                <button class="close-modal-btn" onclick="closeTicketPopup()">Go to My Bookings</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        function closeTicketPopup() {
+            document.getElementById('ticketModal').style.display = 'none';
+            document.querySelectorAll('.seat-selection-view').forEach(el => el.style.display = 'none');
+            // Navigate directly to the newly populated structural page view instantly!
+            switchView('bookings');
+        }
+    </script>
+</body>
+</html>
